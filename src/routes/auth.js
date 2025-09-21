@@ -134,4 +134,45 @@ router.post(
   }
 );
 
+router.post(
+  "/reset-password",
+  [
+    body("token").notEmpty().withMessage("token required"),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .withMessage("newPassword must be at least 8 chars"),
+  ],
+  async (req, res, next) => {
+    try {
+      // validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
+
+      const { token, newPassword } = req.body;
+
+      const reset = await prisma.passwordResetToken.findUnique({
+        where: { token },
+      });
+      if (!reset || reset.expiresAt < new Date()) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+
+      await prisma.user.update({
+        where: { id: reset.userId },
+        data: { password: hashed },
+      });
+
+      // delete token so it can't be reused
+      await prisma.passwordResetToken.delete({ where: { id: reset.id } });
+
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export default router;
