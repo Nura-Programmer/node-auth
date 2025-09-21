@@ -35,8 +35,8 @@ router.post("/register", registerValidators, async (req, res, next) => {
 
     if (existing) {
       if (existing.email === email)
-        return res.status(409).json({ message: "Email already in use" });
-      return res.status(409).json({ message: "Username already in use" });
+        return res.status(403).json({ message: "Email already in use" });
+      return res.status(403).json({ message: "Username already in use" });
     }
 
     // Hash password
