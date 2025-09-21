@@ -50,3 +50,33 @@ describe("POST /api/login", () => {
     expect(res.statusCode).toBe(403);
   });
 });
+
+describe("POST /api/forgot-password", () => {
+  it("generates reset token", async () => {
+    const res = await request(app)
+      .post("/api/forgot-password")
+      .send({ email: "test@example.com" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty("token");
+  });
+});
+
+describe("POST /api/reset-password", () => {
+  it("resets password with valid token", async () => {
+    // first request token
+    const { body } = await request(app)
+      .post("/api/forgot-password")
+      .send({ email: "test@example.com" });
+
+    const token = body.token;
+
+    // reset password
+    const res = await request(app)
+      .post("/api/reset-password")
+      .send({ token, newPassword: "newPass123" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Password updated successfully");
+  });
+});
