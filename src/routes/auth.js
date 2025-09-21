@@ -1,9 +1,10 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
+import { PrismaClient } from "../generated/prisma/client.js";
 
 const router = express.Router();
-const users = [];
+const prisma = new PrismaClient();
 
 const registerValidators = [
   body("username")
@@ -25,9 +26,10 @@ router.post("/register", registerValidators, async (req, res, next) => {
     const { username, email, password } = req.body;
 
     // check existing username/email
-    const existing = users.find(
-      (user) => user.username === username || user.email === email
-    );
+    // check existing username/email
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ email }, { username }] },
+    });
 
     if (existing) {
       if (existing.email === email)
@@ -39,7 +41,10 @@ router.post("/register", registerValidators, async (req, res, next) => {
     const hashed = await bcrypt.hash(password, 10);
 
     // Store user
-    const user = { id: users.length + 1, username, email, password: hashed };
+    const user = await prisma.user.create({
+      data: { username, email, password: hashed },
+      omit: { password },
+    });
 
     return res.status(201).json({ message: "User registered", user });
   } catch (err) {
