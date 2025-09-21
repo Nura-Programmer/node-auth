@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../generated/prisma/client.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -95,6 +96,38 @@ router.post(
           email: user.email,
         },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/forgot-password",
+  [body("email").isEmail().withMessage("valid email required")],
+  async (req, res, next) => {
+    try {
+      // validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
+
+      const { email } = req.body;
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // generate token
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 mins expiry
+
+      await prisma.passwordResetToken.create({
+        data: { token, userId: user.id, expiresAt },
+      });
+
+      // TODO: send token via email, for now return it
+      res.status(200).json({ message: "Reset token generated", token });
     } catch (err) {
       next(err);
     }
