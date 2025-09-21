@@ -54,40 +54,51 @@ router.post("/register", registerValidators, async (req, res, next) => {
   }
 });
 
-router.post("/login", async (req, res, next) => {
-  try {
-    // validation
+router.post(
+  "/login",
+  [
+    body("username").notEmpty().withMessage("username required"),
+    body("password").notEmpty().withMessage("password required"),
+  ],
+  async (req, res, next) => {
+    try {
+      // validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
 
-    const { username, password } = req.body;
+      const { username, password } = req.body;
 
-    // Find user by username
-    const user = await prisma.user.findUnique({ where: { username } });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+      // Find user by username
+      const user = await prisma.user.findUnique({ where: { username } });
+      if (!user)
+        return res.status(401).json({ message: "Invalid credentials" });
 
-    // Compare passwords
-    const isCorrestPassword = await bcrypt.compare(password, user.password);
-    if (!isCorrestPassword)
-      return res.status(401).json({ message: "Invalid credentials" });
+      // Compare passwords
+      const isCorrestPassword = await bcrypt.compare(password, user.password);
+      if (!isCorrestPassword)
+        return res.status(401).json({ message: "Invalid credentials" });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+      // Generate JWT
+      const token = jwt.sign(
+        { userId: user.id, username: user.username },
+        JWT_SECRET,
+        { expiresIn: "1h" }
+      );
 
-    return res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-      },
-    });
-  } catch (err) {
-    next(err);
+      return res.json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 export default router;
