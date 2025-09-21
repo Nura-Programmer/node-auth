@@ -1,11 +1,25 @@
 import express from "express";
+import { body, validationResult } from "express-validator";
 const router = express.Router();
 
 const users = [];
 
-router.post("/register", (req, res, next) => {
+const registerValidators = [
+  body("username")
+    .isLength({ min: 3 })
+    .withMessage("username must be at least 3 chars"),
+  body("email").isEmail().withMessage("valid email required"),
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("password must be at least 8 chars"),
+];
+
+router.post("/register", registerValidators, (req, res, next) => {
   try {
     // Validate request
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+      return res.status(400).json({ errors: errors.array() });
 
     const { username, email, password } = req.body;
 
