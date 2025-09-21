@@ -1,7 +1,8 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
-const router = express.Router();
+import bcrypt from "bcryptjs";
 
+const router = express.Router();
 const users = [];
 
 const registerValidators = [
@@ -14,7 +15,7 @@ const registerValidators = [
     .withMessage("password must be at least 8 chars"),
 ];
 
-router.post("/register", registerValidators, (req, res, next) => {
+router.post("/register", registerValidators, async (req, res, next) => {
   try {
     // Validate request
     const errors = validationResult(req);
@@ -35,9 +36,10 @@ router.post("/register", registerValidators, (req, res, next) => {
     }
 
     // Hash password
+    const hashed = await bcrypt.hash(password, 10);
 
     // Store user
-    const user = { id: users.length + 1, username, email, password };
+    const user = { id: users.length + 1, username, email, password: hashed };
 
     return res.status(201).json({ message: "User registered", user });
   } catch (err) {
