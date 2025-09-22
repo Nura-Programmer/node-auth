@@ -1,23 +1,19 @@
 import express from "express";
-import { body, validationResult } from "express-validator";
+import { validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../generated/prisma/client.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import {
+  forgotPasswordValidators,
+  loginValidators,
+  registerValidators,
+  resetPasswordValidators,
+} from "../validations/validationSchemas.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret_key";
-
-const registerValidators = [
-  body("username")
-    .isLength({ min: 3 })
-    .withMessage("username must be at least 3 chars"),
-  body("email").isEmail().withMessage("valid email required"),
-  body("password")
-    .isLength({ min: 8 })
-    .withMessage("password must be at least 8 chars"),
-];
 
 router.post("/register", registerValidators, async (req, res, next) => {
   try {
@@ -55,56 +51,48 @@ router.post("/register", registerValidators, async (req, res, next) => {
   }
 });
 
-router.post(
-  "/login",
-  [
-    body("username").notEmpty().withMessage("username required"),
-    body("password").notEmpty().withMessage("password required"),
-  ],
-  async (req, res, next) => {
-    try {
-      // validation
-      const errors = validationResult(req);
-      if (!errors.isEmpty())
-        return res.status(400).json({ errors: errors.array() });
+router.post("/login", loginValidators, async (req, res, next) => {
+  try {
+    // validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+      return res.status(400).json({ errors: errors.array() });
 
-      const { username, password } = req.body;
+    const { username, password } = req.body;
 
-      // Find user by username
-      const user = await prisma.user.findUnique({ where: { username } });
-      if (!user)
-        return res.status(401).json({ message: "Invalid credentials" });
+    // Find user by username
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-      // Compare passwords
-      const isCorrestPassword = await bcrypt.compare(password, user.password);
-      if (!isCorrestPassword)
-        return res.status(401).json({ message: "Invalid credentials" });
+    // Compare passwords
+    const isCorrestPassword = await bcrypt.compare(password, user.password);
+    if (!isCorrestPassword)
+      return res.status(401).json({ message: "Invalid credentials" });
 
-      // Generate JWT
-      const token = jwt.sign(
-        { userId: user.id, username: user.username },
-        JWT_SECRET,
-        { expiresIn: "1h" }
-      );
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-      return res.json({
-        message: "Login successful",
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
+    return res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
   }
-);
+});
 
 router.post(
   "/forgot-password",
-  [body("email").isEmail().withMessage("valid email required")],
+  forgotPasswordValidators,
   async (req, res, next) => {
     try {
       // validation
@@ -136,12 +124,7 @@ router.post(
 
 router.post(
   "/reset-password",
-  [
-    body("token").notEmpty().withMessage("token required"),
-    body("newPassword")
-      .isLength({ min: 8 })
-      .withMessage("newPassword must be at least 8 chars"),
-  ],
+  resetPasswordValidators,
   async (req, res, next) => {
     try {
       // validation
