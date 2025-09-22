@@ -46,3 +46,6 @@ npx prisma migrate dev --name init
 ### 5 Start Server
 ```bash
 npm run dev
+
+## Demo video link
+https://drive.google.com/file/d/1Td2CyXhLDBteAIHv1jFW-Bll2yeW_pVG/view?usp=sharing
